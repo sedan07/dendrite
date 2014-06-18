@@ -1,7 +1,7 @@
 package dendrite
 
 import (
-	"github.com/fizx/logs"
+	"github.com/bububa/dendrite/logs"
 	"os"
 	"path"
 	"path/filepath"

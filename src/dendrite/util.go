@@ -2,7 +2,7 @@ package dendrite
 
 import (
 	"fmt"
-	"github.com/kylelemons/go-gypsy/yaml"
+	"github.com/bububa/go-gypsy/yaml"
 	"io"
 	"os"
 	"os/exec"

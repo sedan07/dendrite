@@ -1,10 +1,10 @@
 package main
 
 import (
-	"./src/dendrite"
 	"bufio"
 	"flag"
-	"github.com/fizx/logs"
+	"github.com/bububa/dendrite/logs"
+	"github.com/bububa/dendrite/src/dendrite"
 	"io"
 	"log"
 	"os"

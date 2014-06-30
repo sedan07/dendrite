@@ -215,7 +215,7 @@ func configFromMapping(mapping map[string]interface{}, hostname string) (*Config
 					continue
 				}
 			}
-			logs.Info("found type %s", field.Type)
+			logs.Info("found type %d", field.Type)
 
 			s, err = getString(fld, "treatment")
 			if err != nil {
@@ -227,7 +227,7 @@ func configFromMapping(mapping map[string]interface{}, hostname string) (*Config
 					continue
 				}
 			}
-			logs.Info("found treatment %s", field.Treatment)
+			logs.Info("found treatment %d", field.Treatment)
 
 			field.Format, err = getString(fld, "format")
 

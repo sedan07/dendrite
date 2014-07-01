@@ -3,6 +3,7 @@ package dendrite
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/bububa/dendrite/logs"
 	"io"
 	"net/url"
 	"strings"

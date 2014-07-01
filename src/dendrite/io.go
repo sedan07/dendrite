@@ -78,4 +78,5 @@ func NewTCPReadWriter(u *url.URL) (io.ReadWriteCloser, error) {
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
 	return &rwStruct{r, w, &closeStruct{w, conn}}, nil
+	//return &rwStruct{conn, conn, conn}, nil
 }

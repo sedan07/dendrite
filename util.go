@@ -4,24 +4,8 @@ import (
 	"fmt"
 	"github.com/bububa/go-gypsy/yaml"
 	"io"
-	"os"
-	"os/exec"
 	"strconv"
 )
-
-func bash(str string) {
-	run("bash", "-c", str)
-}
-
-func run(str ...string) {
-	cmd := exec.Command(str[0], str[1:]...)
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-	go io.Copy(os.Stdout, stdout)
-	go io.Copy(os.Stderr, stderr)
-	cmd.Start()
-	cmd.Wait()
-}
 
 func Unescape(in string) string {
 	bytes := []byte(in)
@@ -142,6 +126,8 @@ func parseFieldTreatment(str string) (FieldTreatment, error) {
 		return Counter, nil
 	case "tokenized":
 		return Tokens, nil
+	case "hash":
+		return Hash, nil
 	}
 	return -1, fmt.Errorf("Can't recognize field treatment: %s", str)
 }

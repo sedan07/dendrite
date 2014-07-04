@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/bububa/dendrite/logs"
-	tail_watch "github.com/bububa/tail/watch"
+	"github.com/bububa/tail/watch"
 	"github.com/bububa/tomb"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -30,21 +30,21 @@ var StandardTimeProvider TimeProvider = new(SystemTimeProvider)
 type Tail struct {
 	Path       string
 	OffsetPath string
-	Watcher    tail_watch.FileWatcher
+	Watcher    watch.FileWatcher
 	Parser     Parser
 
 	maxBackfill int64
 	offset      int64
 	handle      *os.File
-	tomb.Tomb
 }
 
-func NewTail(parser Parser, maxBackfill int64, path string, offsetPath string) *Tail {
+func NewTail(parser Parser, maxBackfill int64, path string, offsetPath string, offset int64) *Tail {
 	tail := new(Tail)
 	tail.Path = path
+	tail.offset = offset
 	tail.OffsetPath = offsetPath
 	tail.Parser = parser
-	tail.Watcher = tail_watch.NewInotifyFileWatcher(path)
+	tail.Watcher = watch.NewInotifyFileWatcher(path)
 	tail.LoadOffset()
 	tail.maxBackfill = maxBackfill
 
@@ -59,8 +59,12 @@ func NewTail(parser Parser, maxBackfill int64, path string, offsetPath string) *
 	return tail
 }
 
+func (tail *Tail) Stat() (fi os.FileInfo, err error) {
+	return tail.handle.Stat()
+}
+
 func (tail *Tail) seek() {
-	fi, err := tail.handle.Stat()
+	fi, err := tail.Stat()
 	if err != nil {
 		logs.Error("Can't stat file: %s", err)
 		return
@@ -82,8 +86,12 @@ func (tail *Tail) Offset() int64 {
 	return atomic.LoadInt64(&tail.offset)
 }
 
+func (tail *Tail) SetOffset(o int64) {
+	atomic.StoreInt64(&tail.offset, o)
+}
+
 func (tail *Tail) WriteOffset() {
-	path := path.Join(os.TempDir(), path.Base(tail.OffsetPath))
+	path := filepath.Join(os.TempDir(), filepath.Base(tail.OffsetPath))
 	temp, err := os.Create(path)
 	if err != nil {
 		logs.Debug("Can't create tempfile:", err)
@@ -117,7 +125,7 @@ func (tail *Tail) LoadOffset() {
 				logs.Debug("Malformed offset file: ", err)
 			} else {
 				logs.Debug("Found offset: %d", out)
-				atomic.StoreInt64(&tail.offset, out)
+				tail.SetOffset(out)
 			}
 		}
 		file.Close()
@@ -126,15 +134,22 @@ func (tail *Tail) LoadOffset() {
 
 func (tail *Tail) StartWatching() {
 	go func() {
-		st, err := tail.handle.Stat()
+		fi, err := tail.Stat()
 		if err != nil {
+			logs.Error("Can't stat file: %s", err)
 			return
 		}
-		changes := tail.Watcher.ChangeEvents(&tail.Tomb, st)
-		for _, ok := <-changes.Modified; ok; {
-			tail.Poll()
-		}
+		c := tail.Watcher.ChangeEvents(&tomb.Tomb{}, fi)
+		go tail.pollChannel(c.Modified)
+		go tail.pollChannel(c.Truncated)
+		go tail.pollChannel(c.Deleted)
 	}()
+}
+
+func (tail *Tail) pollChannel(c chan bool) {
+	for _, ok := <-c; ok; {
+		tail.Poll()
+	}
 }
 
 func (tail *Tail) Poll() {
@@ -143,12 +158,12 @@ func (tail *Tail) Poll() {
 	for {
 		len, err := tail.handle.Read(buffer)
 		if err == io.EOF {
-			fi, err := tail.handle.Stat()
+			fi, err := tail.Stat()
 			if err != nil {
 				logs.Warn("Can't stat %s", err)
 			} else if fi.Size() < tail.Offset() {
 				logs.Warn("File truncated, resetting...")
-				atomic.StoreInt64(&tail.offset, 0)
+				tail.SetOffset(0)
 				tail.WriteOffset()
 				tail.seek()
 			}

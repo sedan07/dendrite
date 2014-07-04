@@ -3,13 +3,11 @@ package dendrite
 import (
 	"github.com/bububa/dendrite/logs"
 	"io"
-	"net/url"
 )
 
 type Destinations []*Destination
 
 type Destination struct {
-	Url     *url.URL
 	Encoder Encoder
 	RW      io.ReadWriter
 }
@@ -48,7 +46,7 @@ func NewDestinations() Destinations {
 func NewDestination(config DestinationConfig) (*Destination, error) {
 	var err error = nil
 	dest := new(Destination)
-	dest.Url = config.Url
+
 	dest.RW, err = NewReadWriter(config.Url)
 	if err != nil {
 		return nil, err

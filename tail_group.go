@@ -3,7 +3,6 @@ package dendrite
 import (
 	"github.com/bububa/dendrite/logs"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 )
@@ -65,10 +64,27 @@ func NewTailGroup(config SourceConfig, output chan Record) *TailGroup {
 func (group *TailGroup) activate(match string) {
 	tail, ok := group.Tails[match]
 	if !ok {
-		base := path.Base(match)
-		offset := path.Join(group.OffsetDir, base+".ptr")
-		tail = NewTail(group.NewParser(base), group.maxBackfill, match, offset)
+		fi, _ := os.Stat(match)
+		for _, tail = range group.Tails {
+			tfi, _ := tail.Stat()
+			if os.SameFile(fi, tfi) {
+				tail.Close()
+				delete(group.Tails, tail.Path)
+				off := tail.Offset()
+				tail.SetOffset(0)
+				tail.WriteOffset()
+				base := filepath.Base(match)
+				offset := filepath.Join(group.OffsetDir, base+".ptr")
+				tail = NewTail(group.NewParser(base), group.maxBackfill, match, offset, off)
+				group.Tails[match] = tail
+				return
+			}
+		}
+		base := filepath.Base(match)
+		offset := filepath.Join(group.OffsetDir, base+".ptr")
+		tail = NewTail(group.NewParser(base), group.maxBackfill, match, offset, 0)
 		group.Tails[match] = tail
+
 	}
 }
 

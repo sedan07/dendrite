@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 	"time"
 )
@@ -23,10 +24,10 @@ var line = "{\"_file\":{\"Type\":0,\"Treatment\":0,\"Value\":\"solr.txt\"},\"_gr
 func _tail_init() {
 	StandardTimeProvider = new(FixedTimeProvider)
 	output = make(chan Record, 100)
-	offsetFile = os.TempDir() + "test.txt"
+	offsetFile = path.Join(os.TempDir(), "test.txt")
 	_ = os.Remove(offsetFile)
-	parser = NewRegexpParser("host.local", "foo", "solr.txt", output, "(?P<line>.+)\n", nil, 32768)
-	tail = NewTail(parser, -1, "data/solr.txt", offsetFile)
+	parser = NewRegexpParser("host.local", "foo", "solr.txt", output, "(?P<line>.*[^\r])\r?\n", nil, 32768)
+	tail = NewTail(parser, -1, "testdata/solr.txt", offsetFile, 0)
 }
 
 func TestStartsAtZero(t *testing.T) {
@@ -39,7 +40,7 @@ func TestStartsAtZero(t *testing.T) {
 func TestStartsAtOffset(t *testing.T) {
 	_tail_init()
 	ioutil.WriteFile(offsetFile, []byte("747\n"), 0777)
-	tail = NewTail(parser, -1, "data/solr.txt", offsetFile)
+	tail = NewTail(parser, -1, "testdata/solr.txt", offsetFile, 0)
 	if tail.Offset() != 747 {
 		t.Errorf("initial offset was %d, not 747", tail.Offset())
 	}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"github.com/bububa/dendrite/logs"
 )
 
 type Encoder interface {
@@ -45,16 +46,19 @@ func (*JsonEncoder) Encode(out map[string]Column, writer io.Writer) {
 		panic(err)
 	}
 	bytes = append(bytes, '\n')
+		logs.Debug("Type")
 	writer.Write(bytes)
 }
 
 func (*StatsdEncoder) Encode(out map[string]Column, writer io.Writer) {
 	for k, v := range out {
-		switch v.Type {
+		switch v.Treatment {
 		case Gauge:
 			writer.Write([]byte(fmt.Sprintf("%s:%d|g", k, v.Value)))
 		case Metric:
-			writer.Write([]byte(fmt.Sprintf("%s:%d|m", k, v.Value)))
+			timing := v.Value.(float64)*1000
+			fmt.Println(fmt.Sprintf("Timing: %s", timing))
+			writer.Write([]byte(fmt.Sprintf("%s-us:%f|ms", k, timing)))
 		case Counter:
 			writer.Write([]byte(fmt.Sprintf("%s:%d|c", k, v.Value)))
 		}
